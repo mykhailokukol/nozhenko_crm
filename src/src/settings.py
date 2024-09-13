@@ -138,4 +138,10 @@ ADMIN_SITE_HEADER = "CRM"
 ADMIN_SITE_TITLE = "CRM TITLE"
 ADMIN_INDEX_TITLE = "Добро пожаловать в CRM!"
 
-STATIC_ROOT = BASE_DIR / "static"
+STATIC_URL = "/static/"
+STATICFILES_DIRS = [
+    BASE_DIR / "static",
+]
+
+MEDIA_ROOT = BASE_DIR / "media"
+MEDIA_URL = "/media/"

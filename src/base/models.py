@@ -2,9 +2,14 @@ from random import randint
 
 from django.db import models
 from django.utils import timezone
+from django.utils.html import mark_safe
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import BaseUserManager, PermissionsMixin
 from django.contrib.auth.base_user import AbstractBaseUser
+
+
+def get_image_upload_path(instance, filename):
+    return f"items/{instance.item.article}/{filename}"
 
 
 class UserManager(BaseUserManager):
@@ -41,8 +46,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     USERNAME_FIELD = "username"
     REQUIRED_FIELDS = []
     
-    username = models.CharField(max_length=128, verbose_name="Никнейм", unique=True)
-    password = models.CharField(max_length=255, verbose_name="Пароль")
+    username = models.CharField(max_length=128, verbose_name="Никнейм*", unique=True)
+    password = models.CharField(max_length=255, verbose_name="Пароль*")
     
     first_name = models.CharField(max_length=128, blank=True, null=True, verbose_name="Имя")
     last_name = models.CharField(max_length=128, blank=True, null=True, verbose_name="Фамилия")
@@ -50,21 +55,19 @@ class User(AbstractBaseUser, PermissionsMixin):
     
     is_staff = models.BooleanField(
         default=False,
-        verbose_name="Менеджер?",
+        verbose_name="Имеет доступ к сайту?",
     )
     is_superuser = models.BooleanField(
         default=False,
-        verbose_name="Руководитель/Администратор?",
+        verbose_name="Руководитель/Администратор?*",
     )
     
     date_joined = models.DateField(auto_now_add=True)
     
-    client = models.ForeignKey(
+    clients = models.ManyToManyField(
         "base.Client",
-        on_delete=models.SET_NULL,
-        null=True,
         blank=True,
-        verbose_name="Клиент",
+        verbose_name="Клиенты",
         related_name="users",
     )
     
@@ -77,7 +80,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
 
 class Client(models.Model):
-    name = models.CharField(max_length=128, verbose_name="Имя/Название")
+    name = models.CharField(max_length=128, verbose_name="Имя/Название*")
     
     def __str__(self):
         return f"{self.name}"
@@ -88,9 +91,9 @@ class Client(models.Model):
 
 
 class Storage(models.Model):
-    name = models.CharField(max_length=256, verbose_name="Название")
+    name = models.CharField(max_length=256, verbose_name="Название*")
     area = models.PositiveIntegerField(
-        verbose_name="Площадь (кв.м.)",
+        verbose_name="Площадь (кв.м.)*",
         null=True,
         blank=True,
     )
@@ -128,20 +131,34 @@ class StorageClientM2M(models.Model):
     storage = models.ForeignKey(
         "base.Storage", 
         on_delete=models.CASCADE,
-        verbose_name="Склад",
+        verbose_name="Склад*",
     )
     client = models.ForeignKey(
         "base.Client", 
         on_delete=models.CASCADE,
-        verbose_name="Клиент",
+        verbose_name="Клиент*",
     )
     booked_area = models.PositiveIntegerField(
         default=0, 
-        verbose_name="Зарезервировання площадь (кв.м.)"
+        verbose_name="Зарезервировання площадь (кв.м.)",
+        null=True,
+        blank=True,
+    )
+    free_booked_area = models.PositiveIntegerField(
+        default=0,
+        null=True,
+        blank=True,
+        verbose_name="Свободная площадь на складе (кв.м.)"
     )
     
     def __str__(self):
         return f"{self.client}: {self.storage} ({self.booked_area} кв.м.)"
+    
+    def _count_items_area(self):
+        area = 0.0
+        for item in self.client.items.only("area"):
+            area += item.area
+        return area
     
     def clean(self):
         if self.storage.free_area - self.booked_area < 0:
@@ -154,7 +171,7 @@ class StorageClientM2M(models.Model):
         super().save(*args, **kwargs)    
         
     def delete(self, *args, **kwargs):
-        self.storage.free_area = self.storage.area
+        self.storage.free_area += self.storage.area
         self.storage.save()
     
     class Meta:
@@ -163,7 +180,7 @@ class StorageClientM2M(models.Model):
     
 
 class Project(models.Model):
-    name = models.CharField(max_length=256, verbose_name="Название")
+    name = models.CharField(max_length=256, verbose_name="Название*")
     client = models.ForeignKey(
         "base.Client",
         on_delete=models.CASCADE,
@@ -182,7 +199,7 @@ class Project(models.Model):
 
 
 class ItemCategory(models.Model):
-    name = models.CharField(max_length=128, verbose_name="Название")
+    name = models.CharField(max_length=128, verbose_name="Название*")
     
     def __str__(self):
         return f"{self.name}"
@@ -193,7 +210,7 @@ class ItemCategory(models.Model):
 
 
 class ItemStatus(models.Model):
-    text = models.TextField(verbose_name="Текст")
+    text = models.TextField(verbose_name="Текст*")
     
     def __str__(self):
         return f"{self.text}"
@@ -203,19 +220,82 @@ class ItemStatus(models.Model):
         verbose_name_plural = "Статусы товаров"
 
 
+class ItemImage(models.Model):
+    item = models.ForeignKey(
+        "base.Item",
+        on_delete=models.CASCADE,
+        verbose_name="Товар*",
+        related_name="images",
+    )
+    image = models.ImageField(
+        upload_to=get_image_upload_path,
+        verbose_name="Фото"
+    )
+    
+    def clean(self):
+        count = ItemImage.objects.filter(
+            item=self.item,
+        ).count()
+        if count > 5:
+            raise ValidationError(
+                "Фотографий товара не может быть больше 5"
+            )
+    
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+    
+    def __str__(self):
+        return f"Фото для {self.item}"
+        
+    def image_tag(self):
+        if self.image:
+            return mark_safe(
+                f'<img src="{self.image.url}" width="100" height="100" />'
+            )
+        return "Нет фотографии"
+
+    image_tag.short_description = "Превью"
+    
+    class Meta:
+        verbose_name = "Фотография товара"
+        verbose_name_plural = "Фотографии товара"
+
+
 class Item(models.Model):
     article = models.CharField(max_length=6, unique=True, primary_key=True, verbose_name="Артикул")
-    name = models.CharField(max_length=128, verbose_name="Название")
+    name = models.CharField(max_length=128, verbose_name="Название*")
     description = models.TextField(null=True, blank=True, verbose_name="Описание")
     
-    weight = models.PositiveSmallIntegerField(blank=True, null=True, verbose_name="Масса (кг)")
-    height = models.PositiveSmallIntegerField(blank=True, null=True, verbose_name="Высота (см)")
-    width = models.PositiveSmallIntegerField(blank=True, null=True, verbose_name="Ширина (см)")
-    length = models.PositiveSmallIntegerField(blank=True, null=True, verbose_name="Длина (см)")
-    count = models.PositiveIntegerField(verbose_name="Количество")
-    
-    is_booked = models.BooleanField(default=False, verbose_name="Забронирован?")
-    is_approved = models.BooleanField(default=False, verbose_name="Подтверждение наличия")
+    weight = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        blank=True,
+        null=True,
+        verbose_name="Масса единицы (кг)",
+    )
+    height = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        blank=True, 
+        null=True, 
+        verbose_name="Высота единицы (см)"
+    )
+    width = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        blank=True, 
+        null=True, 
+        verbose_name="Ширина единицы (см)"
+    )
+    length = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        blank=True, 
+        null=True, 
+        verbose_name="Длина единицы (см)"
+    )
+    count = models.PositiveIntegerField(verbose_name="Количество*", default=0)
     
     project = models.ForeignKey(
         "base.Project", 
@@ -223,7 +303,23 @@ class Item(models.Model):
         null=True, 
         blank=True, 
         verbose_name="Проект", 
-        related_name="items"
+        related_name="items",
+    )
+    client = models.ForeignKey(
+        "base.Client", 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        verbose_name="Клиент", 
+        related_name="booked_items",
+    )
+    storage = models.ForeignKey(
+        "base.Storage", 
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=False,  
+        verbose_name="Склад*", 
+        related_name="stored_items",
     )
     category = models.ForeignKey(
         "base.ItemCategory",
@@ -242,13 +338,29 @@ class Item(models.Model):
         verbose_name="Состояние",
     )
     
-    arrival_date = models.DateField(auto_now_add=True, verbose_name="Дата прихода")
+    arrival_date = models.DateField(
+        auto_now_add=True, 
+        verbose_name="Дата прихода*",
+        null=True,
+    )
     expiration_date = models.DateField(null=True, blank=True, verbose_name="Срок годности (конечная дата)")
     
+    def clean(self):
+        pass
+    
     def save(self, *args, **kwargs):
+        self.clean()
         if not self.article:
             self.article = self._generate_unique_article()
+        if self.project and not self.client:
+            self.client = self.project.client
         super().save(*args, **kwargs)
+    
+    @property    
+    def area(self):
+        if self.width and self.length:
+            return self.width * self.length
+        return 0.0
     
     def _generate_unique_article(self):
         while True:
@@ -262,3 +374,228 @@ class Item(models.Model):
     class Meta:
         verbose_name = "Товар"
         verbose_name_plural = "Товары"
+
+
+class ItemStock(models.Model):
+    REQUEST_TYPE_CHOICES = [
+        ("existing", "Заявка на существующий товар"),
+        ("new", "Заявка на новый товар"),
+    ]
+    
+    request_type = models.CharField(
+        max_length=10, 
+        choices=REQUEST_TYPE_CHOICES, 
+        verbose_name="Тип заявки*"
+    )
+    existing_item = models.ForeignKey(
+        Item, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name="stock_requests", 
+        verbose_name="Существующий товар"
+    )
+    new_item_name = models.CharField(
+        max_length=128, 
+        blank=True, 
+        null=True, 
+        verbose_name="Название нового товара"
+    )
+    new_item_description = models.TextField(
+        blank=True, 
+        null=True, 
+        verbose_name="Описание нового товара"
+    )
+    new_item_weight = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2, 
+        blank=True, 
+        null=True, 
+        verbose_name="Масса нового товара (кг)"
+    )
+    new_item_height = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2, 
+        blank=True, 
+        null=True, 
+        verbose_name="Высота нового товара (см)"
+    )
+    new_item_width = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2, 
+        blank=True, 
+        null=True, 
+        verbose_name="Ширина нового товара (см)"
+    )
+    new_item_length = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2,
+        blank=True, 
+        null=True, 
+        verbose_name="Длина нового товара (см)"
+    )
+    count = models.PositiveIntegerField(
+        verbose_name="Количество*"
+    )
+    is_approved = models.BooleanField(
+        default=False, 
+        verbose_name="Подтверждение наличия", 
+        blank=True,
+    )
+
+    def clean(self):
+        if self.request_type == 'existing' and not self.existing_item:
+            raise ValidationError("Выберите существующий товар.")
+        if self.request_type == 'new' and not self.new_item_name:
+            raise ValidationError("Укажите название нового товара.")
+        if self.request_type == 'new' and not self.new_item_description:
+            raise ValidationError("Укажите описание нового товара.")
+        
+    def __str__(self):
+        if self.request_type == 'existing':
+            return f"Заявка на существующий товар: {self.existing_item} ({self.count})"
+        return f"Заявка на новый товар: {self.new_item_name} ({self.count})"
+    
+    class Meta:
+        verbose_name = "Заявка на приход товара"
+        verbose_name_plural = "Заявки на приход товара"
+        
+        permissions = [
+            ("can_change_sensitive_field", "Can change sensitive field")
+        ]
+
+
+class ItemBooking(models.Model):
+    item = models.ForeignKey(
+        "base.Item", 
+        on_delete=models.CASCADE,
+        verbose_name="Товар*",
+        related_name="bookings",
+    )
+    count = models.PositiveIntegerField(verbose_name="Количество*")
+    project = models.ForeignKey(
+        "base.Project",
+        on_delete=models.CASCADE,
+        verbose_name="Проект*",
+        related_name="bookings",
+    )
+    date = models.DateField(verbose_name="Дата", auto_now_add=True, null=True, blank=True)
+    city = models.CharField(max_length=255, null=True, blank=True, verbose_name="Город")
+    description = models.TextField(null=True, blank=True, verbose_name="Описание")
+    start_date = models.DateField(verbose_name="Дата брони (начальная)*")
+    end_date = models.DateField(verbose_name="Дата брони (конечная)*")
+    is_approved = models.BooleanField(default=False, verbose_name="Подтверждение брони")
+    
+    def clean(self):
+        if not self.item.is_approved:
+            raise ValidationError("Невозможно забронировать товар, пока не подтверждено наличие на складе")
+        if self.count > self.item.count:
+            raise ValidationError("Невозможно забронировать большее количество товара, чем есть на складе")
+    
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+    
+    # def delete(self, *args, **kwargs):
+    #     item = Item.objects.get(id=self.item.id)
+    #     item.is_booked = False
+    #     item.project = None
+    #     item.save()
+    #     super().delete(*args, **kwargs)
+    
+    def __str__(self):
+        return f"{self.item} на {self.project}"
+    
+    class Meta:
+        verbose_name = "Запрос на бронь товаров"
+        verbose_name_plural = "Запросы на бронь товаров"
+
+
+class ItemRecovery(models.Model):
+    item = models.ForeignKey(
+        "base.Item", 
+        on_delete=models.CASCADE,
+        verbose_name="Товар*",
+        related_name="recoveries",
+    )
+    reason = models.TextField(verbose_name="Причина*")
+    planning_date = models.DateField(verbose_name="Планируемая дата*")
+    date = models.DateField(null=True, blank=True, verbose_name="Фактическая дата")
+    description = models.TextField(null=True, blank=True, verbose_name="Описание")
+    status = models.ForeignKey(
+        "base.ItemStatus",
+        on_delete=models.SET_NULL,
+        null=True,
+        verbose_name="Статус товара",
+        related_name="recovered_items",
+    )
+    is_approved = models.BooleanField(default=False, verbose_name="Подтверждение утилизации")
+    is_ceo_approved = models.BooleanField(default=False, verbose_name="Утилизация разрешена руководителем")
+    
+    def clean(self):
+        if not self.is_ceo_approved and self.is_approved:
+            raise ValidationError(
+                "Невозможно подтвердить утилизацию. Дождитесь разрешения руководителя"
+            )
+    
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        recovered = "Нет"
+        if self.is_approved:
+            recovered = "Да"
+        return f"{self.item} (утилизирован: {recovered})"
+    
+    class Meta:
+        verbose_name = "Запрос на утилизацию"
+        verbose_name_plural = "Запросы на утилизацию"
+
+
+class ItemRefund(models.Model):
+    item = models.ForeignKey(
+        "base.Item", 
+        on_delete=models.CASCADE,
+        verbose_name="Товар*",
+        related_name="refunds",
+    )
+    count = models.PositiveIntegerField(verbose_name="Количество*")
+    project = models.ForeignKey(
+        "base.Project",
+        on_delete=models.CASCADE,
+        verbose_name="Проект*",
+        related_name="refunds",
+    )
+    status = models.ForeignKey(
+        "base.ItemStatus",
+        on_delete=models.SET_NULL,
+        null=True,
+        verbose_name="Статус товара",
+        related_name="refunded_items",
+    )
+    description = models.TextField(null=True, blank=True, verbose_name="Описание")
+    is_approved = models.BooleanField(default=False, verbose_name="Подтверждение возврата")
+    
+    def clean(self):
+        if self.count > 0:
+            bookings = ItemBooking.objects.filter(
+                item=self.item,
+                is_approved=True,
+            ).only("count", "project")
+            for booking in bookings:
+                if self.count > booking.count:
+                    raise ValidationError(
+                        f"Невозможно запросить возврат на большее количество, чем было забронировано для проекта {booking.project}"
+                    )
+    
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+    
+    def __str__(self):
+        return f"{self.item} с проекта {self.project}"
+    
+    class Meta:
+        verbose_name = "Запрос на возвраты"
+        verbose_name_plural = "Запросы на возвраты"

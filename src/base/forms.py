@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth.hashers import make_password
 
-from base.models import User
+from base.models import User, ItemStock, ItemBooking
 
 
 class CustomUserCreationForm(forms.ModelForm):
@@ -17,3 +17,28 @@ class CustomUserCreationForm(forms.ModelForm):
         if commit:
             user.save()
         return user
+
+
+class ItemStockAdminForm(forms.ModelForm):
+    class Meta:
+        model = ItemStock
+        fields = "__all__"
+        
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        for field in self.fields:
+            if field != "is_approved":
+                self.fields[field].widget.attrs["readonly"] = True
+
+
+class BookingAdminForm(forms.ModelForm):
+    class Meta:
+        model = ItemBooking
+        fields = "__all__"
+
+    class Media:
+        js = (
+            "//ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js",
+            "admin/js/item_booking.js",
+        )
