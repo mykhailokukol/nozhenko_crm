@@ -1,7 +1,8 @@
 from django import forms
+from django.utils.safestring import mark_safe
 from django.contrib.auth.hashers import make_password
 
-from base.models import User, ItemStock, ItemBooking
+from base.models import User, ItemStock, ItemBooking, ItemBookingItemM2M
 
 
 class CustomUserCreationForm(forms.ModelForm):

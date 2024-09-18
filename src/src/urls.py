@@ -19,12 +19,13 @@ from django.contrib import admin
 from django.conf import settings
 from django.conf.urls.static import static
 
-from base.views import get_item_booking
+from base.views import get_item_booking, check_item_booking
 
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('utils/get_item_booking/', get_item_booking, name='get_item_booking'),
+    path('utils/check_item_booking/<int:item_id>/<str:start_date>/<str:end_date>/', check_item_booking, name='check_item_booking'),
 ]
 
 if settings.DEBUG:
