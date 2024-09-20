@@ -1,6 +1,9 @@
 # Используем официальный образ Python
 FROM python:3.12
 
+# Устанавливаем необходимые пакеты
+RUN apt-get update && apt-get install -y locales && locale-gen ru_RU.UTF-8
+
 # Устанавливаем рабочую директорию
 WORKDIR /app
 
@@ -11,8 +14,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Копируем код приложения
 COPY . .
 
-RUN locale-gen ru_RU.UTF-8
-RUN update-locale
+# Устанавливаем локаль по умолчанию
+ENV LANG=ru_RU.UTF-8
+ENV LANGUAGE=ru_RU:ru
+ENV LC_ALL=ru_RU.UTF-8
 
 # Выполняем миграции и собираем статические файлы
 RUN python src/manage.py migrate
