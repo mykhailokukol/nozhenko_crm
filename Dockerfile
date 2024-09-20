@@ -8,7 +8,7 @@ RUN locale-gen ru_RU.UTF-8
 # RUN update-locale LANG=ru_RU.UTF-8
 
 # Устанавливаем рабочую директорию
-WORKDIR /app
+WORKDIR /app/src
 
 # Копируем файл зависимостей и устанавливаем их
 COPY requirements.txt .

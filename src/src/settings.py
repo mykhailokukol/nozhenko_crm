@@ -139,6 +139,7 @@ ADMIN_SITE_HEADER = "CRM"
 ADMIN_SITE_TITLE = "CRM TITLE"
 ADMIN_INDEX_TITLE = "Добро пожаловать в CRM!"
 
+STATIC_ROOT = BASE_DIR / "staticfiles" 
 STATIC_URL = "/static/"
 STATICFILES_DIRS = [
     BASE_DIR / "static",
