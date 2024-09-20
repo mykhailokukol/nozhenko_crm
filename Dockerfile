@@ -23,4 +23,4 @@ ENV LANGUAGE=ru_RU:ru
 ENV LC_ALL=ru_RU.UTF-8
 
 # Указываем команду для запуска Gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "src.wsgi:application"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "wsgi:application"]
