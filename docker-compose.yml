@@ -4,13 +4,16 @@ services:
   web:
     build: .
     volumes:
-      - .:/app  # Монтируем текущую директорию
+      - .:/app
     ports:
-      - "8000:8000"  # Прокси-порт
+      - "8000:8000"
     env_file:
-      - .env  # Если у вас есть файл с переменными окружения
+      - .env
     depends_on:
       - db
+    entrypoint: >
+      /bin/sh -c "python src/manage.py migrate && gunicorn --bind 0.0.0.0:8000 src.wsgi:application"
+
   db:
     image: postgres:latest
     restart: always
@@ -21,9 +24,10 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}       # Укажите существующего пользователя из .env
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD} # Укажите существующий пароль из .env
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+
   nginx:
     image: nginx:latest
     ports:

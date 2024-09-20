@@ -22,9 +22,5 @@ ENV LANG=ru_RU.UTF-8
 ENV LANGUAGE=ru_RU:ru
 ENV LC_ALL=ru_RU.UTF-8
 
-# Выполняем миграции и собираем статические файлы
-RUN python src/manage.py migrate
-RUN python src/manage.py collectstatic --noinput
-
 # Указываем команду для запуска Gunicorn
 CMD ["gunicorn", "--bind", "0.0.0.0:8000", "src.wsgi:application"]
