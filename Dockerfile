@@ -5,7 +5,7 @@ FROM python:3.12
 RUN apt-get update 
 RUN apt-get install -y locales 
 RUN locale-gen ru_RU.UTF-8
-RUN update-locale LANG=ru_RU.UTF-8
+# RUN update-locale LANG=ru_RU.UTF-8
 
 # Устанавливаем рабочую директорию
 WORKDIR /app
