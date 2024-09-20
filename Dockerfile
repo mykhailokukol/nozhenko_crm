@@ -12,8 +12,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Выполняем миграции и собираем статические файлы
-RUN python manage.py migrate
-RUN python manage.py collectstatic --noinput
+RUN python src/manage.py migrate
+RUN python src/manage.py collectstatic --noinput
 
 # Указываем команду для запуска Gunicorn
 CMD ["gunicorn", "--bind", "0.0.0.0:8000", "src.wsgi:application"]
