@@ -8,7 +8,10 @@ from django.http import HttpRequest
 from base import models, forms
 
 
-locale.setlocale(locale.LC_TIME, 'ru_RU.UTF-8')
+try:
+    locale.setlocale(locale.LC_TIME, 'ru_RU.UTF-8')
+except locale.Error:
+    print("Не удалось установить локаль, используем локаль по умолчанию.")
 
 
 class CustomUserAdmin(admin.ModelAdmin):
