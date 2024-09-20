@@ -11,6 +11,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Копируем код приложения
 COPY . .
 
+RUN locale-gen ru_RU.UTF-8
+RUN update-locale
+
 # Выполняем миграции и собираем статические файлы
 RUN python src/manage.py migrate
 RUN python src/manage.py collectstatic --noinput
