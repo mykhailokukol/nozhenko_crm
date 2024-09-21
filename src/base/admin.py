@@ -218,6 +218,12 @@ class AdminItemStock(admin.ModelAdmin):
             return fields
         else:
             return ["is_approved"]
+    
+    class Media:
+        js = (
+            "//ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js",
+            "admin/js/admin_itemstock.js",
+        )
 
 
 @admin.register(models.ItemBooking)
