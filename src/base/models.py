@@ -409,7 +409,7 @@ class Item(models.Model):
                 return random_number
     
     def __str__(self):
-        return f"{self.article} | {self.name}"
+        return f"{self.name} | {self.article}"
     
     class Meta:
         verbose_name = "Товар"
