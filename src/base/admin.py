@@ -187,21 +187,21 @@ class AdminItemStock(admin.ModelAdmin):
         if obj.existing_item:
             return obj.existing_item.client or obj.existing_item.project.client
         else:
-            return obj.new_item.client
+            return obj.new_item_client
     
     @admin.display(description="Склад")
     def storage_display(self, obj):
         if obj.existing_item:
             return obj.existing_item.storage
         else:
-            return obj.new_item.storage
+            return obj.new_item_storage
     
     @admin.display(description="Товар")
     def article_display(self, obj):
         if obj.existing_item:
             return obj.existing_item
         else:
-            return obj.new_item.name
+            return obj.new_item_name
     
     def get_readonly_fields(self, request: HttpRequest, obj: Any | None = ...) -> list[str] | tuple[Any, ...]:
         if request.user.groups.filter(name="Кладовщик").exists():
@@ -213,11 +213,11 @@ class AdminItemStock(admin.ModelAdmin):
                 "new_item_project", "new_item_client",
                 "new_item_storage", "new_item_category",
                 "new_item_status", "new_item_arrival_date",
-                "new_item_expiration_date",
+                "new_item_expiration_date", "planning_date",
             ]
             return fields
         else:
-            return ["is_approved"]
+            return ["is_approved", "date"]
     
     class Media:
         js = (

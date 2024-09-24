@@ -1,3 +1,4 @@
+from datetime import datetime
 from random import randint
 
 from django.db import models
@@ -437,6 +438,8 @@ class ItemStock(models.Model):
     count = models.PositiveIntegerField(
         verbose_name="Количество*"
     )
+    planning_date = models.DateField(default=datetime.now, verbose_name="Планируемая дата*")
+    date = models.DateField(null=True, blank=True, verbose_name="Фактическая дата")
     new_item_name = models.CharField(
         max_length=128, 
         blank=True, 
