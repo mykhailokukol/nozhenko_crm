@@ -275,7 +275,11 @@ class ItemImage(models.Model):
     def save(self, *args, **kwargs):
         self.clean()
         
+        # Ensure item_stock is saved before the main object is saved
         if self.item_stock:
+            if not self.item_stock.pk:  # Check if item_stock has been saved (primary key exists)
+                self.item_stock.save()  # Save item_stock first
+            
             if self.item_stock.is_approved:
                 if self.item_stock.existing_item:
                     self.item = self.item_stock.existing_item
