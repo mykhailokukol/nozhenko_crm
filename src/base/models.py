@@ -263,13 +263,14 @@ class ItemImage(models.Model):
     )
     
     def clean(self):
-        count = ItemImage.objects.filter(
-            item=self.item,
-        ).count()
-        if count > 5:
-            raise ValidationError(
-                "Фотографий товара не может быть больше 5"
-            )
+        # count = ItemImage.objects.filter(
+        #     item=self.item,
+        # ).count()
+        # if count > 5:
+        #     raise ValidationError(
+        #         "Фотографий товара не может быть больше 5"
+        #     )
+        pass
     
     def save(self, *args, **kwargs):
         self.clean()
