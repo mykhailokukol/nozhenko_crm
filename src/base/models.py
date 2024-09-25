@@ -19,8 +19,11 @@ def get_image_upload_path(instance, filename):
             return f"items/{instance.item_stock.new_item_name}/{filename}"
 
 
-def get_recovery_item_image(instance, filename):
+def get_recovery_item_image_path(instance, filename):
     return f"items/recovery/{instance.id}/{filename}"
+
+def get_refund_item_image_path(instance, filename):
+    return f"items/refund/{instance.id}/filename"
 
 
 class UserManager(BaseUserManager):
@@ -303,6 +306,13 @@ class Item(models.Model):
     # TODO: booking count
     name = models.CharField(max_length=128, verbose_name="Название*")
     description = models.TextField(null=True, blank=True, verbose_name="Описание")
+    
+    is_booked = models.BooleanField(
+        default=False, 
+        verbose_name="Забронирован?",
+        null=True,
+        blank=True,
+    )
     
     weight = models.DecimalField(
         max_digits=10,
@@ -630,7 +640,7 @@ class RecoveryImage(models.Model):
         verbose_name="Заявка на утилизацию",
     )
     image = models.ImageField(
-        upload_to=get_recovery_item_image,
+        upload_to=get_recovery_item_image_path,
         verbose_name="Фото*"
     )
     
@@ -705,6 +715,42 @@ class ItemRecovery(models.Model):
         verbose_name_plural = "Заявки на утилизацию"
 
 
+class ItemRefundImage(models.Model):
+    refund = models.ForeignKey(
+        "base.ItemRefund",
+        on_delete=models.CASCADE,
+        related_name="images",
+        verbose_name="Заявка на возврат",
+    )
+    image = models.ImageField(
+        upload_to=get_refund_item_image_path,
+        verbose_name="Фото*",
+    )
+    
+    def clean(self) -> None:
+        pass
+    
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+    
+    def __str__(self):
+        return f"Фото для {self.refund}"
+    
+    def image_tag(self):
+        if self.image:
+            return mark_safe(
+                f'<img src="{self.image.url}" width="100" height="100" />'
+            )
+        return "Нет фотографии"
+
+    image_tag.short_description = "Превью"
+    
+    class Meta:
+        verbose_name = "Фотография товаров"
+        verbose_name_plural = "Фотографии товаров"
+
+
 class ItemRefund(models.Model):
     items = models.ManyToManyField(
         "base.Item", 
@@ -718,14 +764,14 @@ class ItemRefund(models.Model):
         verbose_name="Проект*",
         related_name="refunds",
     )
-    status = models.ForeignKey(
-        "base.ItemStatus",
-        on_delete=models.SET_NULL,
-        null=True,
-        verbose_name="Статус товара",
-        related_name="refunded_items",
-    )
-    city = models.CharField(max_length=255, null=True, verbose_name="Город*")
+    # status = models.ForeignKey(
+    #     "base.ItemStatus",
+    #     on_delete=models.SET_NULL,
+    #     null=True,
+    #     verbose_name="Статус товара",
+    #     related_name="refunded_items",
+    # )
+    city = models.CharField(max_length=255, null=True, verbose_name="Город (куда едет)*")
     date = models.DateField(verbose_name="Дата возврата*", null=True)
     description = models.TextField(null=True, blank=True, verbose_name="Описание")
     is_approved = models.BooleanField(default=False, verbose_name="Подтверждение возврата")
@@ -777,7 +823,7 @@ class ItemConsumption(models.Model):
         related_name="consumptions",
         verbose_name="Заявка на бронь*",
     )
-    city = models.CharField(max_length=255, null=True, verbose_name="Город (откуда едет)*")
+    city = models.CharField(max_length=255, null=True, verbose_name="Город (куда едет)*")
     
     is_approved = models.BooleanField(default=False, verbose_name="Подтверждено складом")
     

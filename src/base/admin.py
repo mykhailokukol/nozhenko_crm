@@ -90,6 +90,16 @@ class RecoveryImageInline(admin.TabularInline):
     readonly_fields = ["image_tag"]
 
 
+class RefundImageInline(admin.TabularInline):
+    model = models.ItemRefundImage
+    extra = 4
+    min_num = 1
+    max_num = 5
+    validate_min = True
+    fields = ["image_tag", "image"]
+    readonly_fields = ["image_tag"]
+
+
 class ItemRefundItemM2MInline(admin.TabularInline):
     model = models.ItemRefundItemM2M
     min_num = 1
@@ -141,16 +151,11 @@ class ItemStatusAdmin(admin.ModelAdmin):
 
 @admin.register(models.Item)
 class ItemAdmin(admin.ModelAdmin):
-    list_display = ["article", "name", "count", "is_booked_display"]
+    list_display = ["article", "name", "count", "is_booked"]
     exclude = ["id"]
     search_fields = ["article", "name"]
-    readonly_fields = ["article", "is_booked_display", "booking_projects", "booking_quantities", "booking_periods"]
+    readonly_fields = ["article", "is_booked", "booking_projects", "booking_quantities", "booking_periods"]
     inlines = [ItemImageInline]
-    
-    @admin.display(description="Забронирован?")
-    def is_booked_display(self, obj):
-        result = {True: "Да", False: "Нет"}
-        return result[obj.bookings.exists()]
 
     @admin.display(description="Проекты")
     def booking_projects(self, obj):
@@ -287,17 +292,18 @@ class AdminItemRecovery(admin.ModelAdmin):
 class AdminItemRefund(admin.ModelAdmin):
     exclude = ["id"]
     search_fields = ["items__article", "items__name"]
-    inlines = [ItemRefundItemM2MInline]
+    inlines = [ItemRefundItemM2MInline, RefundImageInline]
     list_display = ["project__client", "project__name", "city", "date", "storages_display"]
     
     @admin.display(description="Склады")
     def storages_display(self, obj):
-        return " | ".join([item.storage.name for item in obj.items.all()])
+        return " | ".join(set([item.storage.name for item in obj.items.all()]))
     
     def get_readonly_fields(self, request: HttpRequest, obj: Any | None = ...) -> list[str] | tuple[Any, ...]:
         if request.user.groups.filter(name="Кладовщик").exists():
             fields = [
-                "items", "project", "status", "description",
+                "items", "project", "description",
+                # "status",
             ]
             return fields
         else:
@@ -306,7 +312,7 @@ class AdminItemRefund(admin.ModelAdmin):
 
 @admin.register(models.ItemConsumption)
 class AdminItemConsumption(admin.ModelAdmin):
-    list_display = ["booking__project__client", "booking__project", "city", "date_display", "storage_display"]
+    list_display = ["booking__project__client", "booking__project__name", "city", "date_display", "storage_display"]
     exclude = ["id"]
     search_fields = ["booking__items__article", "booking__items__name", "date__month"]
     
@@ -316,7 +322,8 @@ class AdminItemConsumption(admin.ModelAdmin):
     
     @admin.display(description="Склады")
     def storage_display(self, obj):
-        return ", ".join([str(item.storage) for item in obj.booking.items.all()])
+        storages = set([item.storage.name for item in obj.booking.items.all()])
+        return ", ".join(storages)
     
     def get_readonly_fields(self, request: HttpRequest, obj: Any | None = ...) -> list[str] | tuple[Any, ...]:
         if request.user.groups.filter(name="Кладовщик").exists():

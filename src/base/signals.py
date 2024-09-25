@@ -1,7 +1,7 @@
 from django.db.models import F
 from django.db import transaction
 from django.dispatch import receiver
-from django.db.models.signals import post_delete, post_save
+from django.db.models.signals import post_delete, post_save, pre_delete
 
 from base.models import (
     Item,
@@ -103,3 +103,27 @@ def item_recovery(sender, instance, created, **kwargs):
             instance.item.count = F("count") - instance.count
             instance.item.save()
             instance.delete()
+
+
+@receiver(post_save, sender=ItemBooking)
+def item_booking(sender, instance, created, **kwargs):
+    if created:
+        return
+    
+    if instance.is_approved:
+        for item in instance.items.all():
+            item.is_booked = True
+            item.save()
+
+
+@receiver(pre_delete, sender=ItemBooking)
+def item_unbooking(sender, instance, **kwargs):
+    for item in instance.items.all():
+        bookings_count = ItemBooking.objects.filter(
+            items=item,
+        ).count()
+        if bookings_count > 1:
+            continue
+        else:
+            item.is_booked = False
+            item.save()

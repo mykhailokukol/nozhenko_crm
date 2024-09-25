@@ -28,7 +28,7 @@ class Migration(migrations.Migration):
             name='RecoveryImage',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('image', models.ImageField(upload_to=base.models.get_recovery_item_image, verbose_name='Фото*')),
+                ('image', models.ImageField(upload_to=base.models.get_recovery_item_image_path, verbose_name='Фото*')),
                 ('recovery', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='images', to='base.itemrecovery', verbose_name='Заявка на утилизацию')),
             ],
             options={
