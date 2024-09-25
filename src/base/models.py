@@ -772,7 +772,7 @@ class ItemRefund(models.Model):
     #     verbose_name="Статус товара",
     #     related_name="refunded_items",
     # )
-    city = models.CharField(max_length=255, null=True, verbose_name="Город (куда едет)*")
+    city = models.CharField(max_length=255, null=True, verbose_name="Город (откуда едет)*")
     date = models.DateField(verbose_name="Дата возврата*", null=True)
     description = models.TextField(null=True, blank=True, verbose_name="Описание")
     is_approved = models.BooleanField(default=False, verbose_name="Подтверждение возврата")
