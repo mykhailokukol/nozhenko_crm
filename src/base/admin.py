@@ -190,7 +190,11 @@ class AdminItemStock(admin.ModelAdmin):
     @admin.display(description="Клиент")
     def client_display(self, obj):
         if obj.existing_item:
-            return obj.existing_item.client or obj.existing_item.project.client
+            if obj.existing_item.client:
+                return obj.existing_item.client
+            else:
+                if obj.existing_item.project:
+                    return obj.existing_item.project.client
         else:
             return obj.new_item_client
     

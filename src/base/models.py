@@ -277,7 +277,8 @@ class ItemImage(models.Model):
         
         if self.item_stock:
             if self.item_stock.is_approved:
-                self.item = self.item_stock.item
+                if self.item_stock.existing_item:
+                    self.item = self.item_stock.existing_item
     
         super().save(*args, **kwargs)
     
