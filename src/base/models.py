@@ -22,8 +22,13 @@ def get_image_upload_path(instance, filename):
 def get_recovery_item_image_path(instance, filename):
     return f"items/recovery/{instance.id}/{filename}"
 
+
 def get_refund_item_image_path(instance, filename):
-    return f"items/refund/{instance.id}/filename"
+    return f"items/refund/{instance.id}/{filename}"
+
+
+def get_consumption_item_image_path(instance, filename):
+    return f"items/refund/{instance.id}/{filename}"
 
 
 class UserManager(BaseUserManager):
@@ -830,6 +835,7 @@ class ItemConsumption(models.Model):
         verbose_name="Заявка на бронь*",
     )
     city = models.CharField(max_length=255, null=True, verbose_name="Город (куда едет)*")
+    description = models.TextField(null=True, blank=True, verbose_name="Описание")
     
     is_approved = models.BooleanField(default=False, verbose_name="Подтверждено складом")
     
@@ -844,11 +850,45 @@ class ItemConsumption(models.Model):
     )
     
     def __str__(self):
-        result = ", ".join([str(item) for item in self.booking.items.all()])
-        # return f"Заявка на расход {result}"
         storage = self.booking.items.first().storage
         return f"{self.booking.project.client.name} {self.booking.project.name} {self.date_created.date()} {storage}"
     
     class Meta:
         verbose_name = "Заявка на расход"
         verbose_name_plural = "Заявки на расход"
+
+
+class ItemConsumptionImage(models.Model):
+    consumption = models.ForeignKey(
+        "base.ItemConsumption",
+        on_delete=models.CASCADE,
+        related_name="images",
+        verbose_name="Заявка на расход",
+    )
+    image = models.ImageField(
+        upload_to=get_consumption_item_image_path,
+        verbose_name="Фото*"
+    )
+    
+    def clean(self):
+        pass
+    
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+    
+    def __str__(self) -> str:
+        return f"Фото для {self.consumption}"
+    
+    def image_tag(self):
+        if self.image:
+            return mark_safe(
+                f'<img src="{self.image.url}" width="100" height="100" />'
+            )
+        return "Нет фотографии"
+    
+    image_tag.short_description = "Превью"
+    
+    class Meta:
+        verbose_name = "Фотография товаров"
+        verbose_name_plural = "Фотографии товаров"

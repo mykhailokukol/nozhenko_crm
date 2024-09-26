@@ -107,6 +107,16 @@ class ItemRefundItemM2MInline(admin.TabularInline):
     validate_min = True
 
 
+class ItemConsumptionImageInline(admin.TabularInline):
+    model = models.ItemConsumptionImage
+    min_num = 1
+    extra = 4
+    max_num = 5
+    validate_min = True
+    fields = ["image_tag", "image"]
+    readonly_fields = ["image_tag"]
+
+
 # Models
 @admin.register(models.Client)
 class ClientAdmin(admin.ModelAdmin):
@@ -319,6 +329,7 @@ class AdminItemConsumption(admin.ModelAdmin):
     list_display = ["booking__project__client", "booking__project__name", "city", "date_display", "storage_display"]
     exclude = ["id"]
     search_fields = ["booking__items__article", "booking__items__name", "date__month"]
+    inlines = [ItemConsumptionImageInline]
     
     @admin.display(description="Дата отправки")
     def date_display(self, obj):
@@ -331,7 +342,7 @@ class AdminItemConsumption(admin.ModelAdmin):
     
     def get_readonly_fields(self, request: HttpRequest, obj: Any | None = ...) -> list[str] | tuple[Any, ...]:
         if request.user.groups.filter(name="Кладовщик").exists():
-            return ["booking", "date_created"]
+            return ["booking", "date_created", "description"]
         else:
             return ["date_created", "is_approved"]
     
