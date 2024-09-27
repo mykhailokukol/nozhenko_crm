@@ -13,17 +13,24 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
 
-    - name: Set up SSH with passphrase
+    - name: Install expect
+      run: sudo apt-get update && sudo apt-get install -y expect
+
+    - name: Set up SSH
       uses: webfactory/ssh-agent@v0.5.3
       with:
         ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-        ssh-passphrase: ${{ secrets.SSH_PASSPHRASE }}
 
     - name: Add known hosts
       run: |
         mkdir -p ~/.ssh
         echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
 
-    - name: Deploy to server
+    - name: Deploy to server with passphrase
       run: |
-        ssh ${{ secrets.SSH_USER}}@${{ secrets.SSH_HOST_IP}} "cd nozhenko_crm/ && git pull origin main && docker compose down && docker compose up -d --build"
+        /usr/bin/expect << EOF
+        spawn ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST_IP }} "cd nozhenko_crm/ && git pull origin main && docker compose down && docker compose up -d --build"
+        expect "Enter passphrase for key"
+        send "${{ secrets.SSH_PASSPHRASE }}\r"
+        interact
+        EOF
