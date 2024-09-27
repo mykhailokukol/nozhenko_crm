@@ -10,32 +10,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
-
-    - name: Install expect and set up SSH
-      run: |
-        sudo apt-get update && sudo apt-get install -y expect
-        # Запуск ssh-agent
-        eval "$(ssh-agent -s)"
-        # Добавляем ключ с помощью expect
-        /usr/bin/expect <<EOF
-        spawn ssh-add ~/.ssh/deploy_key
-        expect "Enter passphrase for /home/runner/.ssh/deploy_key"
-        send "${{ secrets.SSH_PASSPHRASE }}\r"
-        interact
-        EOF
-
-    - name: Add known hosts
-      run: |
-        mkdir -p ~/.ssh
-        echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
-
-    - name: Deploy to server with passphrase
-      run: |
-        /usr/bin/expect <<EOF
-        spawn ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST_IP }} "cd nozhenko_crm/ && git pull origin main && docker compose down && docker compose up -d --build"
-        expect "Enter passphrase for key"
-        send "${{ secrets.SSH_PASSPHRASE }}\r"
-        interact
-        EOF
+    - name: Update
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.SSH_HOST_IP }}
+        username: ${{ secrets.SSH_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          cd nozhenko_crm/
+          git pull --rebase origin master
+          docker compose down
+          docker compose up --build -d
