@@ -1,0 +1,28 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up SSH
+      uses: webfactory/ssh-agent@v0.5.3
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+    # - name: Add known hosts
+    #   run: |
+    #     mkdir -p ~/.ssh
+    #     echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+
+    - name: Deploy to server
+      run: |
+        ssh ${{ secrets.SSH_USER}}@${{ secrets.SSH_HOST_IP}} "cd nozhenko_crm/ && git pull origin main && docker compose down && docker compose up -d --build"
