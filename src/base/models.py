@@ -552,6 +552,11 @@ class ItemStock(models.Model):
         verbose_name="Подтверждение наличия на складе", 
         blank=True,
     )
+    is_archived = models.BooleanField(
+        default=False,
+        verbose_name="Архив",
+        blank=True,
+    )
 
     def clean(self):
         if self.request_type == 'existing' and not self.existing_item:
@@ -563,8 +568,11 @@ class ItemStock(models.Model):
         
     def __str__(self):
         if self.request_type == 'existing':
-            return f"Заявка на существующий товар: {self.existing_item} ({self.count})"
-        return f"Заявка на новый товар: {self.new_item_name} ({self.count})"
+            result = f"Заявка на существующий товар: {self.existing_item} ({self.count})"
+        result = f"Заявка на новый товар: {self.new_item_name} ({self.count})"
+        if self.is_archived:
+            result = f"[АРХИВ] {result}"
+        return result
     
     class Meta:
         verbose_name = "Заявка на приход товара"
@@ -594,18 +602,24 @@ class ItemBooking(models.Model):
     start_date = models.DateField(verbose_name="Дата брони (начальная)*")
     end_date = models.DateField(verbose_name="Дата брони (конечная)*")
     is_approved = models.BooleanField(default=False, verbose_name="Подтверждение брони кладовщиком")
+    is_archived = models.BooleanField(
+        default=False,
+        verbose_name="Архив",
+        blank=True,
+    )
     
     def clean(self):
-        ...
+        pass
     
     def save(self, *args, **kwargs):
         self.clean()
         super().save(*args, **kwargs)
     
     def __str__(self):
-        result = ", ".join([str(item) for item in self.items.all()])
-        # return f"Проект: {self.project}; Товары: {result}"
-        return f"{self.project.client.name} {self.project.name} {self.start_date}-{self.end_date}"
+        result = f"{self.project.client.name} {self.project.name} {self.start_date}-{self.end_date}"
+        if self.is_archived:
+            result = f"[АРХИВ] {result}"
+        return result
     
     class Meta:
         verbose_name = "Заявка на бронь товаров"
@@ -700,6 +714,11 @@ class ItemRecovery(models.Model):
     count = models.PositiveIntegerField(default=0, verbose_name="Количество")
     is_approved = models.BooleanField(default=False, verbose_name="Подтверждение утилизации кладовщиком")
     is_ceo_approved = models.BooleanField(default=False, verbose_name="Утилизация разрешена руководителем")
+    is_archived = models.BooleanField(
+        default=False,
+        verbose_name="Архив",
+        blank=True,
+    )
     
     def clean(self):
         if not self.is_ceo_approved and self.is_approved:
@@ -719,7 +738,10 @@ class ItemRecovery(models.Model):
         recovered = "Нет"
         if self.is_approved:
             recovered = "Да"
-        return f"{self.item} (утилизирован: {recovered})"
+        result = f"{self.item} (утилизирован: {recovered})"
+        if self.is_archived:
+            result = f"[АРХИВ] {result}"
+        return result
     
     class Meta:
         verbose_name = "Заявка на утилизацию"
@@ -786,6 +808,11 @@ class ItemRefund(models.Model):
     date = models.DateField(verbose_name="Дата возврата*", null=True)
     description = models.TextField(null=True, blank=True, verbose_name="Описание")
     is_approved = models.BooleanField(default=False, verbose_name="Подтверждение возврата")
+    is_archived = models.BooleanField(
+        default=False,
+        verbose_name="Архив",
+        blank=True,
+    )
     
     def clean(self):
         pass
@@ -795,7 +822,10 @@ class ItemRefund(models.Model):
         super().save(*args, **kwargs)
     
     def __str__(self):
-        return f"Проект: {self.project}"
+        result = f"Проект: {self.project}"
+        if self.is_archived:
+            result = f"[АРХИВ] {result}"
+        return result
     
     class Meta:
         verbose_name = "Заявка на возвраты"
@@ -848,10 +878,18 @@ class ItemConsumption(models.Model):
         null=True,
         verbose_name="Дата создания заявки",
     )
+    is_archived = models.BooleanField(
+        default=False,
+        verbose_name="Архив",
+        blank=True,
+    )
     
     def __str__(self):
         storage = self.booking.items.first().storage
-        return f"{self.booking.project.client.name} {self.booking.project.name} {self.date_created.date()} {storage}"
+        result = f"{self.booking.project.client.name} {self.booking.project.name} {self.date_created.date()} {storage}"
+        if self.is_archived:
+            result = f"[АРХИВ] {result}"
+        return result
     
     class Meta:
         verbose_name = "Заявка на расход"

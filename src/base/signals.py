@@ -29,7 +29,10 @@ def item_stock_approved(sender, instance, created, **kwargs):
             item.count += instance.count
             item.save()
             
-            instance.delete()
+            instance.is_archived = True
+            post_save.disconnect(item_stock_approved, sender=ItemStock)
+            instance.save()
+            post_save.connect(item_stock_approved, sender=ItemStock)
         return
     
     if instance.is_approved:
@@ -76,7 +79,10 @@ def item_consumption_approved(sender, instance, created, **kwargs):
                 if item.count - booking.item_count >= 0:
                     item.count -= booking.item_count
                     item.save()
-            instance.delete()
+            instance.is_archived = True
+            post_save.disconnect(item_consumption_approved, sender=ItemConsumption)
+            instance.save()
+            post_save.connect(item_consumption_approved, sender=ItemConsumption)
 
 
 @receiver(post_save, sender=ItemRefund)
@@ -90,7 +96,10 @@ def item_refund(sender, instance, created, **kwargs):
             for refund_item in refund_items:
                 refund_item.item.count = F("count") + refund_item.item_count
                 refund_item.item.save()
-            instance.delete()
+            instance.is_archived = True
+            post_save.disconnect(item_refund, sender=ItemRefund)
+            instance.save()
+            post_save.connect(item_refund, sender=ItemRefund)
 
 
 @receiver(post_save, sender=ItemRecovery)
@@ -102,7 +111,10 @@ def item_recovery(sender, instance, created, **kwargs):
         with transaction.atomic():
             instance.item.count = F("count") - instance.count
             instance.item.save()
-            instance.delete()
+            instance.is_archived = True
+            post_save.disconnect(item_recovery, sender=ItemRecovery)
+            instance.save()
+            post_save.connect(item_recovery, sender=ItemRecovery)
 
 
 @receiver(post_save, sender=ItemBooking)

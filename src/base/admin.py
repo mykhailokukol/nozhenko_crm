@@ -192,8 +192,8 @@ class ItemAdmin(admin.ModelAdmin):
 
 @admin.register(models.ItemStock)
 class AdminItemStock(admin.ModelAdmin):
-    list_display = ["client_display", "storage_display", "article_display", "count"]
-    list_filter = ('request_type',)
+    list_display = ["client_display", "storage_display", "article_display", "count", "is_archived"]
+    list_filter = ('request_type', "is_archived")
     search_fields = ('new_item_name', 'existing_item__name')
     inlines = [ItemImageInline]
     
@@ -233,10 +233,15 @@ class AdminItemStock(admin.ModelAdmin):
                 "new_item_storage", "new_item_category",
                 "new_item_status", "new_item_arrival_date",
                 "new_item_expiration_date", "planning_date",
+                "is_archived",
             ]
             return fields
         else:
-            return ["is_approved", "date"]
+            return ["is_approved", "date", "is_archived",]
+    
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.order_by("is_archived")
     
     class Media:
         js = (
@@ -247,11 +252,12 @@ class AdminItemStock(admin.ModelAdmin):
 
 @admin.register(models.ItemBooking)
 class AdminItemBooking(admin.ModelAdmin):
-    list_display = ('project', 'city', 'is_approved', 'booking_items', 'booking_quantities', 'booking_periods')
+    list_display = ('project', 'city', 'is_approved', 'booking_items', 'booking_quantities', 'booking_periods', "is_archived")
     form = forms.BookingAdminForm
     exclude = ["id"]
     search_fields = ["project__name", "items__name", "start_date__month"] # TODO: add month
     inlines = [ItemBookingItemM2MInline]
+    list_filter = ["is_archived"]
     
     @admin.display(description="Товары")
     def booking_items(self, obj):
@@ -275,31 +281,41 @@ class AdminItemBooking(admin.ModelAdmin):
             fields = [
                 "items", "project", "date",
                 "city", "description", "start_date",
-                "end_date",
+                "end_date", "is_archived",
             ]
             return fields
         else:
-            return ["is_approved"]
+            return ["is_approved", "is_archived",]
+    
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.order_by("is_archived")
     
     
 @admin.register(models.ItemRecovery)
 class AdminItemRecovery(admin.ModelAdmin):
-    list_display = ["item", "count", "item__storage", "planning_date", "is_ceo_approved", "is_approved",]
+    list_display = ["item", "count", "item__storage", "planning_date", "is_ceo_approved", "is_approved", "is_archived"]
     exclude = ["id"]
     search_fields = ["item__article", "item__name"]
     inlines = [RecoveryImageInline]
+    list_filter = ["is_archived"]
     
     def get_readonly_fields(self, request: HttpRequest, obj: Any | None = ...) -> list[str] | tuple[Any, ...]:
         if request.user.groups.filter(name="Кладовщик").exists():
             fields = [
                 "item", "reason", "planning_date",
-                "description", "status", "is_ceo_approved"
+                "description", "status", "is_ceo_approved",
+                "is_archived",
             ]
             return fields
         elif request.user.groups.filter(name="Руководитель").exists():
-            return ["is_approved", "date"]
+            return ["is_approved", "date", "is_archived",]
         else:
-            return ["is_approved", "is_ceo_approved", "date"]
+            return ["is_approved", "is_ceo_approved", "date", "is_archived",]
+    
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.order_by("is_archived")
 
     
 @admin.register(models.ItemRefund)
@@ -307,7 +323,8 @@ class AdminItemRefund(admin.ModelAdmin):
     exclude = ["id"]
     search_fields = ["items__article", "items__name"]
     inlines = [ItemRefundItemM2MInline, RefundImageInline]
-    list_display = ["project__client", "project__name", "city", "date", "storages_display"]
+    list_display = ["project__client", "project__name", "city", "date", "storages_display", "is_archived"]
+    list_filter = ["is_archived"]
     
     @admin.display(description="Склады")
     def storages_display(self, obj):
@@ -317,19 +334,25 @@ class AdminItemRefund(admin.ModelAdmin):
         if request.user.groups.filter(name="Кладовщик").exists():
             fields = [
                 "items", "project", "description",
+                "is_archived",
                 # "status",
             ]
             return fields
         else:
-            return ["is_approved"]
+            return ["is_approved", "is_archived",]
+    
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.order_by("is_archived")
     
 
 @admin.register(models.ItemConsumption)
 class AdminItemConsumption(admin.ModelAdmin):
-    list_display = ["booking__project__client", "booking__project__name", "city", "date_display", "storage_display"]
+    list_display = ["booking__project__client", "booking__project__name", "city", "date_display", "storage_display", "is_archived"]
     exclude = ["id"]
     search_fields = ["booking__items__article", "booking__items__name", "date__month"]
     inlines = [ItemConsumptionImageInline]
+    list_filter = ["is_archived"]
     
     @admin.display(description="Дата отправки")
     def date_display(self, obj):
@@ -342,8 +365,12 @@ class AdminItemConsumption(admin.ModelAdmin):
     
     def get_readonly_fields(self, request: HttpRequest, obj: Any | None = ...) -> list[str] | tuple[Any, ...]:
         if request.user.groups.filter(name="Кладовщик").exists():
-            return ["booking", "date_created", "description"]
+            return ["booking", "date_created", "description", "is_archived",]
         else:
-            return ["date_created", "is_approved"]
+            return ["date_created", "is_approved", "is_archived",]
+    
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.order_by("is_archived")
     
     
