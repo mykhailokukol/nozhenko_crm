@@ -184,10 +184,6 @@ class ItemAdmin(admin.ModelAdmin):
         return " | ".join([
             f"{start.strftime('%d %B %Y')} - {end.strftime('%d %B %Y')}" for start, end in periods
         ]) if periods else "—"
-    
-    def get_queryset(self, request: HttpRequest) -> QuerySet:
-        queryset = super().get_queryset(request)
-        return queryset.filter(count__gt=0)
 
 
 @admin.register(models.ItemStock)
