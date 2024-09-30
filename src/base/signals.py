@@ -141,6 +141,10 @@ def item_booking(sender, instance, created, **kwargs):
         for item in instance.items.all():
             item.is_booked = True
             item.save()
+        instance.is_archived = True
+        post_save.disconnect(item_recovery, sender=ItemBooking)
+        instance.save()
+        post_save.connect(item_recovery, sender=ItemBooking)
 
 
 @receiver(pre_delete, sender=ItemBooking)
