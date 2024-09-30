@@ -192,7 +192,7 @@ class ItemAdmin(admin.ModelAdmin):
 
 @admin.register(models.ItemStock)
 class AdminItemStock(admin.ModelAdmin):
-    list_display = ["client_display", "storage_display", "article_display", "count", "is_archived"]
+    list_display = ["article_display", "client_display", "storage_display", "count", "is_archived"]
     list_filter = ('request_type', "is_archived")
     search_fields = ('new_item_name', 'existing_item__name')
     inlines = [ItemImageInline]
@@ -323,7 +323,7 @@ class AdminItemRefund(admin.ModelAdmin):
     exclude = ["id"]
     search_fields = ["items__article", "items__name"]
     inlines = [ItemRefundItemM2MInline, RefundImageInline]
-    list_display = ["project__client", "project__name", "city", "date", "storages_display", "is_archived"]
+    list_display = ["project__name", "project__client", "city", "date", "storages_display", "is_archived"]
     list_filter = ["is_archived"]
     
     @admin.display(description="Склады")
@@ -348,7 +348,7 @@ class AdminItemRefund(admin.ModelAdmin):
 
 @admin.register(models.ItemConsumption)
 class AdminItemConsumption(admin.ModelAdmin):
-    list_display = ["booking__project__client", "booking__project__name", "city", "date_display", "storage_display", "is_archived"]
+    list_display = ["booking__project__name", "booking__project__client", "city", "date_display", "storage_display", "is_archived"]
     exclude = ["id"]
     search_fields = ["booking__items__article", "booking__items__name", "date__month"]
     inlines = [ItemConsumptionImageInline]
