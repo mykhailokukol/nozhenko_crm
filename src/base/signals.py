@@ -70,8 +70,11 @@ def item_stock_approved(sender, instance, created, **kwargs):
                 image.item = item
                 image.item_stock = None
                 image.save()
-        
-            instance.delete()
+
+            instance.is_archived = True
+            post_save.disconnect(item_stock_approved, sender=ItemStock)
+            instance.save()
+            post_save.connect(item_stock_approved, sender=ItemStock)
 
 
 @receiver(post_save, sender=ItemConsumption)
