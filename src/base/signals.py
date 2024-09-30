@@ -1,7 +1,9 @@
+from random import randint
+
 from django.db.models import F
 from django.db import transaction
 from django.dispatch import receiver
-from django.db.models.signals import post_delete, post_save, pre_delete
+from django.db.models.signals import post_delete, post_save, pre_delete, pre_save
 
 from base.models import (
     Item,
@@ -13,6 +15,16 @@ from base.models import (
     ItemRefundItemM2M,
     ItemBookingItemM2M,
 )
+
+
+@receiver(pre_save, sender=Item)
+def item_article(sender, instance, **kwargs):
+    if not instance.pk:
+        while True:
+            random_number = f"{randint(0, 999999):06}"
+            if not Item.objects.filter(article=random_number).exists():
+                instance.article = random_number
+                break
 
 
 @receiver(post_save, sender=ItemStock)

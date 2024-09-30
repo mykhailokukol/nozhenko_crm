@@ -411,8 +411,6 @@ class Item(models.Model):
     
     def save(self, *args, **kwargs):
         self.clean()
-        if not self.article:
-            self.article = self._generate_unique_article()
         if self.project and not self.client:
             self.client = self.project.client
         super().save(*args, **kwargs)
@@ -422,12 +420,6 @@ class Item(models.Model):
         if self.width and self.length:
             return self.width * self.length
         return 0.0
-    
-    def _generate_unique_article(self):
-        while True:
-            random_number = f"{randint(0, 999999):06}"
-            if not Item.objects.filter(article=random_number).exists():
-                return random_number
     
     def __str__(self):
         return f"{self.name} | {self.article}"
