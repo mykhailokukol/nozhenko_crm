@@ -221,7 +221,7 @@ class AdminItemStock(admin.ModelAdmin):
     def get_readonly_fields(self, request: HttpRequest, obj: Any | None = ...) -> list[str] | tuple[Any, ...]:
         if request.user.groups.filter(name="Кладовщик").exists():
             fields = [
-                "request_type", "existing_item", "count",
+                "request_type", "existing_item", #"count",
                 "new_item_name", "new_item_description",
                 "new_item_weight", "new_item_height",
                 "new_item_width", "new_item_length",
@@ -329,7 +329,7 @@ class AdminItemRefund(admin.ModelAdmin):
     def get_readonly_fields(self, request: HttpRequest, obj: Any | None = ...) -> list[str] | tuple[Any, ...]:
         if request.user.groups.filter(name="Кладовщик").exists():
             fields = [
-                "items", "project", "description",
+                "items", "project", #"description",
                 "is_archived",
                 # "status",
             ]
@@ -361,7 +361,9 @@ class AdminItemConsumption(admin.ModelAdmin):
     
     def get_readonly_fields(self, request: HttpRequest, obj: Any | None = ...) -> list[str] | tuple[Any, ...]:
         if request.user.groups.filter(name="Кладовщик").exists():
-            return ["booking", "date_created", "description", "is_archived",]
+            return [
+                "booking", "date_created", "is_archived", #"description",
+            ]
         else:
             return ["date_created", "is_approved", "is_archived",]
     
