@@ -5,7 +5,7 @@ services:
     build: .
     volumes:
       - .:/app
-      - media_volume:/app/media
+      - media_volume:/app/src/media
     ports:
       - "8000:8000"
     env_file:
