@@ -66,6 +66,21 @@ class ItemImageInline(admin.TabularInline):
             return 5
         return 4
 
+    def has_change_permission(self, request, obj=None):
+        if obj and obj.is_approved:
+            return False
+        return super().has_change_permission(request, obj)
+
+    def has_add_permission(self, request, obj=None):
+        if obj and obj.is_approved:
+            return False
+        return super().has_add_permission(request, obj)
+
+    def has_delete_permission(self, request, obj=None):
+        if obj and obj.is_approved:
+            return False
+        return super().has_delete_permission(request, obj)
+
 
 class ItemBookingItemM2MInline(admin.TabularInline):
     model = models.ItemBookingItemM2M
@@ -219,6 +234,9 @@ class AdminItemStock(admin.ModelAdmin):
             return obj.new_item_name
     
     def get_readonly_fields(self, request: HttpRequest, obj: Any | None = ...) -> list[str] | tuple[Any, ...]:
+        if obj and obj.is_approved:
+            return [field.name for field in obj._meta.fields]
+        
         if request.user.groups.filter(name="Кладовщик").exists():
             fields = [
                 "request_type", "existing_item", #"count",
