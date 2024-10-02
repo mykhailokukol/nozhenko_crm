@@ -67,17 +67,17 @@ class ItemImageInline(admin.TabularInline):
         return 4
 
     def has_change_permission(self, request, obj=None):
-        if obj and obj.is_approved:
+        if obj and hasattr(obj, 'is_approved') and obj.is_approved:
             return False
         return super().has_change_permission(request, obj)
 
     def has_add_permission(self, request, obj=None):
-        if obj and obj.is_approved:
+        if obj and hasattr(obj, 'is_approved') and obj.is_approved:
             return False
         return super().has_add_permission(request, obj)
 
     def has_delete_permission(self, request, obj=None):
-        if obj and obj.is_approved:
+        if obj and hasattr(obj, 'is_approved') and obj.is_approved:
             return False
         return super().has_delete_permission(request, obj)
 
