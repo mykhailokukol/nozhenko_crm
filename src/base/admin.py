@@ -176,7 +176,7 @@ class ItemStatusAdmin(admin.ModelAdmin):
 
 @admin.register(models.Item)
 class ItemAdmin(admin.ModelAdmin):
-    list_display = ["article", "name", "count", "is_booked"]
+    list_display = ["article", "name", "category", "count", "is_booked"]
     exclude = ["id"]
     search_fields = ["article", "name"]
     readonly_fields = ["article", "is_booked", "booking_projects", "booking_quantities", "booking_periods"]
