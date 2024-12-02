@@ -1,9 +1,11 @@
 import locale
 from typing import Any
 
+import openpyxl
+
 from django.contrib import admin
 from django.db.models.query import QuerySet
-from django.http import HttpRequest
+from django.http import HttpRequest, HttpResponse
 
 from base import models, forms
 
@@ -181,6 +183,38 @@ class ItemAdmin(admin.ModelAdmin):
     search_fields = ["article", "name"]
     readonly_fields = ["article", "is_booked", "booking_projects", "booking_quantities", "booking_periods"]
     inlines = [ItemImageInline]
+    actions = ["export_as_xlsx"]
+    
+    def export_as_xlsx(self, request, queryset):
+        workbook = openpyxl.Workbook()
+        sheet = workbook.active
+        sheet.title = "Товары"
+
+        headers = ['Артикул', 'Название', 'Категория', 'Количество на складе', 'Забронирован?', 'Периоды броней']
+        sheet.append(headers)
+
+        for obj in queryset:
+            bookings = models.ItemBooking.objects.filter(items=obj)
+            periods = ", ".join(
+                f"{booking.start_date.strftime('%d.%m.%Y')}-{booking.end_date.strftime('%d.%m.%Y')}" 
+                for booking in bookings
+            )
+            sheet.append([
+                obj.article,
+                obj.name,
+                obj.category.name if obj.category else None,
+                obj.count,
+                'Да' if obj.is_booked else 'Нет',
+                periods or "Нет броннирований",
+            ])
+
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=товары.xlsx'
+
+        workbook.save(response)
+        return response
+
+    export_as_xlsx.short_description = "Выгрузить .XLSX"
 
     @admin.display(description="Проекты")
     def booking_projects(self, obj):
@@ -207,6 +241,32 @@ class AdminItemStock(admin.ModelAdmin):
     list_filter = ('request_type', "is_archived")
     search_fields = ('new_item_name', 'existing_item__name')
     inlines = [ItemImageInline]
+    actions = ["export_as_xlsx"]
+    
+    def export_as_xlsx(self, request, queryset):
+        workbook = openpyxl.Workbook()
+        sheet = workbook.active
+        sheet.title = "Заявки на приход"
+
+        headers = ["Товар", "Проект", "Дата прихода"]
+        sheet.append(headers)
+
+        for obj in queryset:
+            sheet.append([
+                f"{obj.new_item_name} ({obj.new_item_count}шт.) {obj.new_item_storage.name}"
+                if obj.new_item_name
+                else f"{obj.existing_item.name} ({obj.count}шт.) {obj.existing_item.storage.name}",
+                obj.existing_item.project.name if obj.existing_item and obj.existing_item.project else obj.new_item_project,
+                obj.date.strftime('%d.%m.%Y'),
+            ])
+
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=товары.xlsx'
+
+        workbook.save(response)
+        return response
+
+    export_as_xlsx.short_description = "Выгрузить .XLSX"
     
     @admin.display(description="Клиент")
     def client_display(self, obj):
@@ -272,6 +332,37 @@ class AdminItemBooking(admin.ModelAdmin):
     search_fields = ["project__name", "items__name", "start_date__month"] # TODO: add month
     inlines = [ItemBookingItemM2MInline]
     list_filter = ["is_archived"]
+    actions = ["export_as_xlsx"]
+    
+    def export_as_xlsx(self, request, queryset):
+        workbook = openpyxl.Workbook()
+        sheet = workbook.active
+        sheet.title = "Заявки на бронь"
+
+        headers = ["Товары", "Проект", "Город", "Начальная дата", "Конечная дата"]
+        sheet.append(headers)
+
+        for obj in queryset:
+            items = obj.items.all()
+            items_data = ", ".join(
+                f"{item.article} | {item.name} ({item.count}шт.) [{item.storage.name if item.storage else 'Склад не указан'}]"
+                for item in items
+            )
+            sheet.append([
+                items_data,
+                obj.project.name if obj.project else None,
+                obj.city,
+                obj.start_date.strftime('%d.%m.%Y'),
+                obj.end_date.strftime('%d.%m.%Y'),
+            ])
+
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=товары.xlsx'
+
+        workbook.save(response)
+        return response
+
+    export_as_xlsx.short_description = "Выгрузить .XLSX"
     
     @admin.display(description="Товары")
     def booking_items(self, obj):
@@ -313,6 +404,31 @@ class AdminItemRecovery(admin.ModelAdmin):
     search_fields = ["item__article", "item__name"]
     inlines = [RecoveryImageInline]
     list_filter = ["is_archived"]
+    actions = ["export_as_xlsx"]
+    
+    def export_as_xlsx(self, request, queryset):
+        workbook = openpyxl.Workbook()
+        sheet = workbook.active
+        sheet.title = "Заявки на утилизацию"
+
+        headers = ["Товар", "Количество", "Планируемая дата", "Подтверждение утилизации кладовщиком"]
+        sheet.append(headers)
+
+        for obj in queryset:
+            sheet.append([
+                f"{obj.item.article} | {obj.item.name}",
+                obj.item.count,
+                obj.planning_date.strftime("%d.%m.%Y"),
+                "Да" if obj.is_approved else "Нет",
+            ])
+
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=товары.xlsx'
+
+        workbook.save(response)
+        return response
+
+    export_as_xlsx.short_description = "Выгрузить .XLSX"
     
     def get_readonly_fields(self, request: HttpRequest, obj: Any | None = ...) -> list[str] | tuple[Any, ...]:
         if request.user.groups.filter(name="Кладовщик").exists():
@@ -339,6 +455,36 @@ class AdminItemRefund(admin.ModelAdmin):
     inlines = [ItemRefundItemM2MInline, RefundImageInline]
     list_display = ["project__name", "project__client", "city", "date", "storages_display", "is_archived"]
     list_filter = ["is_archived"]
+    actions = ["export_as_xlsx"]
+    
+    def export_as_xlsx(self, request, queryset):
+        workbook = openpyxl.Workbook()
+        sheet = workbook.active
+        sheet.title = "Заявки на возврат"
+
+        headers = ["Товары", "Проект", "Город (откуда едет)", "Дата прихода"]
+        sheet.append(headers)
+
+        for obj in queryset:
+            items = obj.items.all()
+            items_data = ", ".join(
+                f"{item.article} | {item.name} ({item.count}шт.) [{item.storage.name if item.storage else 'Склад не указан'}]"
+                for item in items
+            )
+            sheet.append([
+                items_data,
+                obj.project.name,
+                obj.city,
+                obj.date.strftime('%d.%m.%Y'),
+            ])
+
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=товары.xlsx'
+
+        workbook.save(response)
+        return response
+
+    export_as_xlsx.short_description = "Выгрузить .XLSX"
     
     @admin.display(description="Склады")
     def storages_display(self, obj):
@@ -367,6 +513,36 @@ class AdminItemConsumption(admin.ModelAdmin):
     search_fields = ["booking__items__article", "booking__items__name", "date__month"]
     inlines = [ItemConsumptionImageInline]
     list_filter = ["is_archived"]
+    actions = ["export_as_xlsx"]
+    
+    def export_as_xlsx(self, request, queryset):
+        workbook = openpyxl.Workbook()
+        sheet = workbook.active
+        sheet.title = "Заявки на расход"
+
+        headers = ["Товары", "Проект", "Город (куда едет)", "Дата отправки"]
+        sheet.append(headers)
+
+        for obj in queryset:
+            items = obj.booking.items.all()
+            items_data = ", ".join(
+                f"{item.article} | {item.name} ({item.count}шт.) [{item.storage.name if item.storage else 'Склад не указан'}]"
+                for item in items
+            )
+            sheet.append([
+                items_data,
+                obj.booking.project.name if obj.booking.project else None,
+                obj.city,
+                obj.date.strftime('%d.%m.%Y'),
+            ])
+
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=товары.xlsx'
+
+        workbook.save(response)
+        return response
+
+    export_as_xlsx.short_description = "Выгрузить .XLSX"
     
     @admin.display(description="Дата отправки")
     def date_display(self, obj):
