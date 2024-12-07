@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   web:
     build: .
@@ -14,6 +12,27 @@ services:
       - db
     entrypoint: >
       /bin/sh -c "python manage.py migrate && gunicorn --bind 0.0.0.0:8000 src.wsgi:application"
+  
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+  
+  celery_beat:
+    build: .
+    command: celery -A src beat --loglevel=info
+    depends_on:
+      - redis
+    volumes:
+      - .:/app
+
+  celery:
+    build: .
+    command: celery -A src worker --loglevel=info
+    depends_on:
+      - redis
+    volumes:
+      - .:/app
 
   db:
     image: postgres:latest
